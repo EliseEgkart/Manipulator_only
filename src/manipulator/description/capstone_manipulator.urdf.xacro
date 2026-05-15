@@ -40,17 +40,17 @@
   <xacro:property name="link_w" value="0.050"/>
   <xacro:property name="link_d" value="0.050"/>
 
-  <xacro:property name="base_h" value="0.048142"/>
-  <xacro:property name="joint1_to_joint2" value="0.068000"/>
-  <xacro:property name="joint2_to_joint3_z" value="0.262901"/>
-  <xacro:property name="joint2_to_joint3_x" value="0.030475"/>
-  <xacro:property name="joint3_to_joint4" value="0.346571"/>
-  <xacro:property name="wrist_link_len" value="0.080008"/>
+  <xacro:property name="base_h" value="0.088576"/>
+  <xacro:property name="joint1_to_joint2" value="0.058118"/>
+  <xacro:property name="joint2_to_joint3_z" value="0.263683"/>
+  <xacro:property name="joint2_to_joint3_x" value="0.031016"/>
+  <xacro:property name="joint3_to_joint4" value="0.346599"/>
+  <xacro:property name="wrist_link_len" value="0.090002"/>
 
   <!-- 엔드이펙터 TCP 위치 -->
-  <xacro:property name="ee_offset_x" value="0.090008"/>
-  <xacro:property name="ee_offset_y" value="-0.033856"/>
-  <xacro:property name="ee_offset_z" value="0.019895"/>
+  <xacro:property name="ee_offset_x" value="0.090002"/>
+  <xacro:property name="ee_offset_y" value="-0.034040"/>
+  <xacro:property name="ee_offset_z" value="0.019938"/>
   <xacro:property name="ee_size" value="0.010"/>
 
   <!-- D435 카메라 장착 위치 -->
@@ -113,16 +113,16 @@
   <xacro:property name="mesh_scale" value="0.001 0.001 0.001"/>
 
   <!-- STL 위치 보정값 -->
-  <xacro:property name="base_mesh_xyz" value="-0.022 0.0385 0.04"/>
+  <xacro:property name="base_mesh_xyz" value="-0.02 -0.1815 0.077"/>
   <xacro:property name="base_mesh_rpy" value="0 0 0"/>
 
-  <xacro:property name="link1_mesh_xyz" value="-0.022 0.0385 -0.0028"/>
+  <xacro:property name="link1_mesh_xyz" value="-0.022 0.0385 -0.012"/>
   <xacro:property name="link1_mesh_rpy" value="0 0 0"/>
 
-  <xacro:property name="link2_mesh_xyz" value="-0.023 0.0385 -0.0705"/>
+  <xacro:property name="link2_mesh_xyz" value="-0.022 0.0385 -0.0701"/>
   <xacro:property name="link2_mesh_rpy" value="0 0 0"/>
 
-  <xacro:property name="link3_mesh_xyz" value="-0.0538 0.0385 -0.3335"/>
+  <xacro:property name="link3_mesh_xyz" value="-0.053 0.0385 -0.3339"/>
   <xacro:property name="link3_mesh_rpy" value="0 0 0"/>
 
   <xacro:property name="link4_mesh_xyz" value="-0.43 0.0385 -0.334"/>
