@@ -5,8 +5,7 @@
   <!-- 외부 Xacro include                                       -->
   <!-- ========================================================= -->
   <!-- RealSense D435 모델을 사용하기 위한 xacro include -->
-<xacro:include filename="/home/moonshot/Manipulator_only/src/realsense-ros/realsense2_description/urdf/_d435.urdf.xacro"/>
-  <!-- ========================================================= -->
+<xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro"/>  <!-- ========================================================= -->
   <!-- 운동학 모델 정의                                         -->
   <!-- ========================================================= -->
   <!--
@@ -141,8 +140,8 @@
   <xacro:property name="joint3_lower" value="-1.57"/>
   <xacro:property name="joint3_upper" value="1.57"/>
 
-  <xacro:property name="joint4_lower" value="-1.5"/>
-  <xacro:property name="joint4_upper" value="1.5"/>
+  <xacro:property name="joint4_lower" value="-0.5"/>
+  <xacro:property name="joint4_upper" value="0.7"/>
 
   <xacro:property name="joint_effort" value="0.1"/>
   <xacro:property name="joint_velocity" value="4.8"/>

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="manipulator">
+
+  <!-- Initial joint positions -->
+  <xacro:arg
+    name="initial_positions_file"
+    default="$(find manipulator_moveit)/config/initial_positions.yaml" />
+
+  <!-- Main robot model -->
+  <xacro:include
+    filename="$(find manipulator)/description/capstone_manipulator.urdf.xacro" />
+
+  <!-- ros2_control configuration -->
+  <xacro:include
+    filename="$(find manipulator_moveit)/config/manipulator.ros2_control.xacro" />
+
+  <!-- ros2_control fake/mock hardware instance -->
+  <xacro:manipulator_ros2_control
+    name="manipulator_system"
+    initial_positions_file="$(arg initial_positions_file)" />
+
+</robot>
