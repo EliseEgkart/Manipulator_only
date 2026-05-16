@@ -18,12 +18,18 @@ arm_controller:
 
     command_interfaces:
       - position
+
     state_interfaces:
       - position
       - velocity
 
-    # MoveIt이 기본으로 FollowJointTrajectory 액션을 호출하므로 그대로 둠
-    # (goal_time 등은 선택)
     state_publish_rate: 50.0
     action_monitor_rate: 20.0
+
     allow_partial_joints_goal: false
+
+    # 피드백 없는 PWM 서보를 사용할 때 우선 적용
+    open_loop_control: true
+
+    # trajectory 마지막 지점에서 속도가 0이 되도록 요구. 애매한데.
+    allow_nonzero_velocity_at_trajectory_end: false
