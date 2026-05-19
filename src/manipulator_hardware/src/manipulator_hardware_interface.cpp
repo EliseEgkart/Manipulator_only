@@ -115,7 +115,7 @@ hardware_interface::CallbackReturn ManipulatorHardwareInterface::on_init(
 
   serial_port_ = info_.hardware_parameters.count("serial_port")
     ? info_.hardware_parameters.at("serial_port")
-    : "/dev/ttyACM0";
+    : "/dev/ttyUSB0";
 
   baud_rate_ = info_.hardware_parameters.count("baud_rate")
     ? std::stoi(info_.hardware_parameters.at("baud_rate"))

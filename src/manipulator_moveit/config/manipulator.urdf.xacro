@@ -19,7 +19,7 @@
 
   <xacro:arg
     name="serial_port"
-    default="/dev/ttyACM0" />
+    default="/dev/ttyUSB0" />
 
   <xacro:arg
     name="baud_rate"
