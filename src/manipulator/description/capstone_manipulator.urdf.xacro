@@ -140,7 +140,7 @@
   <xacro:property name="joint3_lower" value="-1.57080"/>  <!-- theta3_min =  -90 deg -->
   <xacro:property name="joint3_upper" value="1.30900"/>   <!-- theta3_max =   75 deg -->
 
-  <xacro:property name="joint4_lower" value="-0.47124"/>  <!-- theta4_min =  -27 deg -->
+  <xacro:property name="joint4_lower" value="-0.41888"/>  <!-- theta4_min =  -24 deg -->
   <xacro:property name="joint4_upper" value="1.30900"/>   <!-- theta4_max =   75 deg -->
 
   <!-- ========================================================= -->
