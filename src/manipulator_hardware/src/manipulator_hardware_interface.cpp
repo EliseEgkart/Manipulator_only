@@ -488,11 +488,12 @@ hardware_interface::return_type ManipulatorHardwareInterface::write(
   std::ostringstream ss;
   ss << std::fixed << std::setprecision(3);
   ss << "CMD_POS,"
-     << sequence_++ << ","
-     << j1_deg << ","
-     << j2_deg << ","
-     << j3_deg << ","
-     << j4_deg << "\r\n";
+    << sequence_++ << ","
+    << j1_deg << ","
+    << j2_deg << ","
+    << j3_deg << ","
+    << j4_deg << ","
+    << 1 << "\r\n";
 
   const std::string packet = ss.str();
 
