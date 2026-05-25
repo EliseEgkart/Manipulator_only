@@ -1,0 +1,29 @@
+object_distance_node:
+  ros__parameters:
+    detections_topic: /detections
+    depth_image_topic: /camera/camera/depth/image_rect_raw
+    depth_camera_info_topic: /camera/camera/depth/camera_info
+
+    # launch에서 override할 예정
+    target_label_prefixes:
+      - btn_3
+
+    base_frame: camera_link
+    fallback_camera_frame: camera_depth_optical_frame
+
+    depth_unit_scale: 0.001
+    depth_min_m: 0.15
+    depth_max_m: 3.0
+
+    depth_mode: median
+    roi_sample_grid: 5
+
+    sync_queue: 10
+    sync_slop_sec: 0.08
+
+    marker_topic: /object_3d_marker
+    point_topic: /object_3d_point
+    marker_scale: 0.03
+    marker_lifetime_sec: 0.2
+
+    debug_log: true

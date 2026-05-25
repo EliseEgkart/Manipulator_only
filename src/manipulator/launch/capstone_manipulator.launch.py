@@ -1,3 +1,9 @@
+# =========================================================
+# Purpose
+# =========================================================
+# Load the manipulator URDF/Xacro model, publish robot states,
+# and visualize the robot in RViz with optional joint GUI control.
+
 import os
 
 from ament_index_python.packages import get_package_share_directory

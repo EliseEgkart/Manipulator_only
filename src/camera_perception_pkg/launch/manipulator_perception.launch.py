@@ -3,17 +3,25 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, TimerAction
+# [MODIFIED] DeclareLaunchArgument 추가
+from launch.actions import IncludeLaunchDescription, TimerAction, DeclareLaunchArgument
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+# [ADDED] LaunchConfiguration 추가
+from launch.substitutions import LaunchConfiguration
 
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
     # =========================================================
+    # Launch arguments
+    # =========================================================
+    # [ADDED] 실행 시 인식할 버튼 클래스 prefix를 외부에서 넘기기 위한 인자
+    target_button = LaunchConfiguration('target_button')
+
+    # =========================================================
     # Package paths
     # =========================================================
-    # serial_test_share = get_package_share_directory('serial_test')
     realsense_share = get_package_share_directory('realsense2_camera')
 
     # =========================================================
@@ -23,6 +31,16 @@ def generate_launch_description():
         realsense_share,
         'launch',
         'rs_launch.py'
+    )
+
+    # =========================================================
+    # Declare launch arguments
+    # =========================================================
+    # [ADDED] 기본 타깃 버튼 설정
+    declare_target_button = DeclareLaunchArgument(
+        'target_button',
+        default_value='btn_under1_deactive',
+        description='Target button class prefix to detect'
     )
 
     # =========================================================
@@ -62,7 +80,7 @@ def generate_launch_description():
     #   -p depth_image_topic:=/camera/camera/aligned_depth_to_color/image_raw \
     #   -p depth_camera_info_topic:=/camera/camera/color/camera_info \
     #   -p base_frame:=camera_link \
-    #   -p target_class_name:=btn_2_deactive
+    #   -p target_label_prefixes:="['btn_under1_deactive']"
     # =========================================================
     object_distance_node = Node(
         package='camera_perception_pkg',
@@ -75,7 +93,11 @@ def generate_launch_description():
                 'depth_image_topic': '/camera/camera/aligned_depth_to_color/image_raw',
                 'depth_camera_info_topic': '/camera/camera/color/camera_info',
                 'base_frame': 'camera_link',
-                'target_class_name': 'btn_under1_deactive',
+
+                # [MODIFIED]
+                # 기존 target_class_name은 object_distance_node.py에 없는 파라미터이므로 제거.
+                # 현재 노드는 target_label_prefixes를 사용하여 class_name.startswith(prefix)로 타깃을 고름.
+                'target_label_prefixes': [target_button],
             }
         ]
     )
@@ -97,6 +119,9 @@ def generate_launch_description():
     # =========================================================
     # 카메라 토픽이 생성된 뒤 perception node들이 붙도록 약간 지연 실행
     return LaunchDescription([
+        # [ADDED] launch argument 등록
+        declare_target_button,
+
         TimerAction(
             period=1.0,
             actions=[
