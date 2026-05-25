@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # object_distance_node.py
+# ros2 topic pub --once /manipulator_perception/target_button std_msgs/msg/String "{data: 'btn_under1_deactive'}"
 
 from typing import Optional, Tuple, List
 import numpy as np
@@ -12,7 +13,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPo
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PointStamped
 from visualization_msgs.msg import Marker
-from std_msgs.msg import Header
+from std_msgs.msg import Header, String
 
 from cv_bridge import CvBridge
 
@@ -42,6 +43,7 @@ class ObjectDistanceNode(Node):
 
         # 타깃 클래스 필터 (prefix 기반)
         self.declare_parameter('target_label_prefixes', ['btn_3'])
+        self.declare_parameter('target_button_topic', '/manipulator_perception/target_button')
 
         # TF frame
         self.declare_parameter('base_frame', 'camera_link')   # 로봇 기준 프레임
@@ -75,6 +77,7 @@ class ObjectDistanceNode(Node):
         self.info_topic = self.get_parameter('depth_camera_info_topic').value
 
         self.target_prefixes = list(self.get_parameter('target_label_prefixes').value)
+        self.target_button_topic = self.get_parameter('target_button_topic').value
 
         self.base_frame = self.get_parameter('base_frame').value
         self.fallback_camera_frame = self.get_parameter('fallback_camera_frame').value
@@ -107,6 +110,14 @@ class ObjectDistanceNode(Node):
         self.marker_pub = self.create_publisher(Marker, marker_topic, 10)
         self.point_pub = self.create_publisher(PointStamped, point_topic, 10)
 
+        # Dynamic target button subscriber
+        self.target_button_sub = self.create_subscription(
+            String,
+            self.target_button_topic,
+            self._target_button_cb,
+            10
+        )
+
         # QoS: RealSense sensor topics는 대부분 BEST_EFFORT
         sensor_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -132,6 +143,22 @@ class ObjectDistanceNode(Node):
         self.get_logger().info(f"[object_distance_node] info={self.info_topic}")
         self.get_logger().info(f"[object_distance_node] depth_mode={self.depth_mode}, roi_grid={self.roi_sample_grid}")
         self.get_logger().info(f"[object_distance_node] base_frame={self.base_frame}")
+        self.get_logger().info(f"[object_distance_node] initial target_prefixes={self.target_prefixes}")
+        self.get_logger().info(f"[object_distance_node] target_button_topic={self.target_button_topic}")
+
+    # ---------------- Dynamic target update ----------------
+    def _target_button_cb(self, msg: String) -> None:
+        target = msg.data.strip()
+
+        if not target:
+            self.get_logger().warn("[object_distance_node] empty target button ignored")
+            return
+
+        self.target_prefixes = [target]
+
+        self.get_logger().info(
+            f"[object_distance_node] target button updated: {self.target_prefixes}"
+        )
 
     # ---------------- Target selection ----------------
     def _is_target(self, class_name: str) -> bool:

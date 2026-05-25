@@ -4,9 +4,10 @@ object_distance_node:
     depth_image_topic: /camera/camera/depth/image_rect_raw
     depth_camera_info_topic: /camera/camera/depth/camera_info
 
-    # launch에서 override할 예정
     target_label_prefixes:
       - btn_3
+
+    target_button_topic: /manipulator_perception/target_button
 
     base_frame: camera_link
     fallback_camera_frame: camera_depth_optical_frame
@@ -23,7 +24,7 @@ object_distance_node:
 
     marker_topic: /object_3d_marker
     point_topic: /object_3d_point
-    marker_scale: 0.03
+    marker_scale: 0.01
     marker_lifetime_sec: 0.2
 
     debug_log: true
