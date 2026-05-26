@@ -24,7 +24,7 @@ namespace
 {
 
 constexpr double kCommandEpsilonRad = 1e-3;
-constexpr double kWritePeriodMs = 100.0;   // 10 Hz serial command rate
+constexpr double kWritePeriodMs = 50.0;   // 10 Hz serial command rate
 constexpr int kMaxAckRetries = 3;
 
 bool g_waiting_ack = false;
