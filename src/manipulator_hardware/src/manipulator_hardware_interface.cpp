@@ -11,6 +11,9 @@
 
 #include <cerrno>
 #include <cstring>
+#include <exception>
+#include <string>
+#include <vector>
 
 #include "pluginlib/class_list_macros.hpp"
 
@@ -19,6 +22,31 @@ namespace manipulator_hardware
 
 namespace
 {
+
+constexpr double kCommandEpsilonRad = 1e-3;
+constexpr double kWritePeriodMs = 100.0;   // 10 Hz serial command rate
+constexpr int kMaxAckRetries = 3;
+
+bool g_waiting_ack = false;
+uint32_t g_pending_seq = 0;
+int g_retry_count = 0;
+std::string g_pending_packet;
+std::vector<double> g_pending_commands;
+rclcpp::Time g_last_tx_time;
+rclcpp::Time g_last_write_time;
+bool g_last_tx_time_valid = false;
+bool g_last_write_time_valid = false;
+
+void resetSerialAckState()
+{
+  g_waiting_ack = false;
+  g_pending_seq = 0;
+  g_retry_count = 0;
+  g_pending_packet.clear();
+  g_pending_commands.clear();
+  g_last_tx_time_valid = false;
+  g_last_write_time_valid = false;
+}
 
 speed_t getBaudRate(int baud_rate)
 {
@@ -350,7 +378,16 @@ hardware_interface::CallbackReturn ManipulatorHardwareInterface::on_configure(
     return hardware_interface::CallbackReturn::ERROR;
   }
 
-  writeLine("PING\r\n");
+  // ESP32 boards can reset when the USB serial port is opened.
+  // Wait before the first PING so the MCU can finish Serial.begin() and setup().
+  usleep(1500 * 1000);
+  tcflush(serial_fd_, TCIOFLUSH);
+
+  for (int i = 0; i < 3; ++i)
+  {
+    writeLine("PING\r\n");
+    usleep(100 * 1000);
+  }
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -374,6 +411,8 @@ hardware_interface::CallbackReturn ManipulatorHardwareInterface::on_activate(
     last_sent_commands_[i] = std::numeric_limits<double>::quiet_NaN();
   }
 
+  resetSerialAckState();
+
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 
@@ -386,6 +425,7 @@ hardware_interface::CallbackReturn ManipulatorHardwareInterface::on_deactivate(
 
   writeLine("STOP\r\n");
   closeSerialPort();
+  resetSerialAckState();
 
   return hardware_interface::CallbackReturn::SUCCESS;
 }
@@ -398,9 +438,58 @@ hardware_interface::return_type ManipulatorHardwareInterface::read(
 
   while (readLine(line))
   {
-    if (line.rfind("ACK", 0) == 0 ||
-        line.rfind("PONG", 0) == 0 ||
-        line.rfind("ERR", 0) == 0)
+    if (line.rfind("ACK,", 0) == 0)
+    {
+      RCLCPP_INFO(
+        rclcpp::get_logger("ManipulatorHardwareInterface"),
+        "RX: %s",
+        line.c_str());
+
+      try
+      {
+        const uint32_t ack_seq =
+          static_cast<uint32_t>(std::stoul(line.substr(4)));
+
+        if (g_waiting_ack && ack_seq == g_pending_seq)
+        {
+          if (g_pending_commands.size() == last_sent_commands_.size())
+          {
+            last_sent_commands_ = g_pending_commands;
+          }
+
+          g_waiting_ack = false;
+          g_retry_count = 0;
+          g_pending_packet.clear();
+          g_pending_commands.clear();
+          g_last_tx_time_valid = false;
+
+          RCLCPP_INFO(
+            rclcpp::get_logger("ManipulatorHardwareInterface"),
+            "ACK matched. seq=%u",
+            ack_seq);
+        }
+        else
+        {
+          RCLCPP_WARN(
+            rclcpp::get_logger("ManipulatorHardwareInterface"),
+            "ACK seq mismatch or stale ACK. rx=%u, pending=%u, waiting=%s",
+            ack_seq,
+            g_pending_seq,
+            g_waiting_ack ? "true" : "false");
+        }
+      }
+      catch (const std::exception &)
+      {
+        RCLCPP_WARN(
+          rclcpp::get_logger("ManipulatorHardwareInterface"),
+          "Invalid ACK format: %s",
+          line.c_str());
+      }
+    }
+    else if (line.rfind("ACK_STOP", 0) == 0 ||
+             line.rfind("PONG", 0) == 0 ||
+             line.rfind("ERR", 0) == 0 ||
+             line.rfind("BOOT", 0) == 0)
     {
       RCLCPP_INFO(
         rclcpp::get_logger("ManipulatorHardwareInterface"),
@@ -454,7 +543,7 @@ hardware_interface::return_type ManipulatorHardwareInterface::read(
 }
 
 hardware_interface::return_type ManipulatorHardwareInterface::write(
-  const rclcpp::Time &,
+  const rclcpp::Time & time,
   const rclcpp::Duration &)
 {
   if (hw_commands_.size() < 4)
@@ -462,13 +551,69 @@ hardware_interface::return_type ManipulatorHardwareInterface::write(
     return hardware_interface::return_type::ERROR;
   }
 
+  if (g_waiting_ack)
+  {
+    const double elapsed_ms = g_last_tx_time_valid
+      ? (time - g_last_tx_time).seconds() * 1000.0
+      : timeout_ms_ + 1.0;
+
+    if (elapsed_ms < timeout_ms_)
+    {
+      return hardware_interface::return_type::OK;
+    }
+
+    if (g_retry_count >= kMaxAckRetries)
+    {
+      RCLCPP_WARN(
+        rclcpp::get_logger("ManipulatorHardwareInterface"),
+        "ACK timeout. Give up seq=%u after %d retries.",
+        g_pending_seq,
+        g_retry_count);
+
+      g_waiting_ack = false;
+      g_retry_count = 0;
+      g_pending_packet.clear();
+      g_pending_commands.clear();
+      g_last_tx_time_valid = false;
+
+      return hardware_interface::return_type::ERROR;
+    }
+
+    RCLCPP_WARN(
+      rclcpp::get_logger("ManipulatorHardwareInterface"),
+      "ACK timeout. Retry seq=%u (%d/%d)",
+      g_pending_seq,
+      g_retry_count + 1,
+      kMaxAckRetries);
+
+    if (!writeLine(g_pending_packet))
+    {
+      return hardware_interface::return_type::ERROR;
+    }
+
+    g_last_tx_time = time;
+    g_last_tx_time_valid = true;
+    ++g_retry_count;
+
+    return hardware_interface::return_type::OK;
+  }
+
+  if (g_last_write_time_valid)
+  {
+    const double elapsed_ms = (time - g_last_write_time).seconds() * 1000.0;
+
+    if (elapsed_ms < kWritePeriodMs)
+    {
+      return hardware_interface::return_type::OK;
+    }
+  }
+
   bool changed = false;
-  const double eps = 1e-5;
 
   for (size_t i = 0; i < hw_commands_.size(); ++i)
   {
     if (std::isnan(last_sent_commands_[i]) ||
-        std::fabs(hw_commands_[i] - last_sent_commands_[i]) > eps)
+        std::fabs(hw_commands_[i] - last_sent_commands_[i]) > kCommandEpsilonRad)
     {
       changed = true;
       break;
@@ -485,10 +630,12 @@ hardware_interface::return_type ManipulatorHardwareInterface::write(
   const double j3_deg = radToDeg(hw_commands_[2]);
   const double j4_deg = radToDeg(hw_commands_[3]);
 
+  const uint32_t seq = sequence_++;
+
   std::ostringstream ss;
   ss << std::fixed << std::setprecision(3);
   ss << "CMD_POS,"
-    << sequence_++ << ","
+    << seq << ","
     << j1_deg << ","
     << j2_deg << ","
     << j3_deg << ","
@@ -507,7 +654,18 @@ hardware_interface::return_type ManipulatorHardwareInterface::write(
     return hardware_interface::return_type::ERROR;
   }
 
-  last_sent_commands_ = hw_commands_;
+  g_pending_seq = seq;
+  g_pending_packet = packet;
+  g_pending_commands = hw_commands_;
+  g_waiting_ack = true;
+  g_retry_count = 0;
+  g_last_tx_time = time;
+  g_last_tx_time_valid = true;
+  g_last_write_time = time;
+  g_last_write_time_valid = true;
+
+  // Do not update last_sent_commands_ here.
+  // It is updated only after RX: ACK,<seq> is received in read().
 
   return hardware_interface::return_type::OK;
 }
